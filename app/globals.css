@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: #05060d;
+  --color-surface: #0c1020;
+  --color-surface-2: #141a30;
+  --color-border: #232a44;
+  --color-foreground: #eef1fb;
+  --color-muted: #8a92b2;
+
+  --color-gold: #f5c451;
+  --color-purple: #a97bff;
+  --color-pink: #ff5c93;
+  --color-cyan: #35d0e0;
+  --color-green: #4ade80;
+  --color-red: #f6604a;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+
+  --radius-xl2: 1.25rem;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background-image:
+    radial-gradient(1200px 600px at 50% -10%, rgba(169, 123, 255, 0.12), transparent 60%),
+    radial-gradient(900px 500px at 90% 10%, rgba(255, 92, 147, 0.08), transparent 60%);
+  background-attachment: fixed;
+}
+
+/* Thin scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 999px;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.animate-pulse-dot {
+  animation: pulse-dot 1.4s ease-in-out infinite;
+}
