@@ -1,5 +1,6 @@
 import type { GameState } from "./types"
 import { SCHEMA_VERSION } from "./types"
+import { emptyKnowledge, seedNpcRelationships } from "./seed"
 
 const STORAGE_KEY = "the-haven:save:v1"
 
@@ -7,8 +8,28 @@ type Migration = (state: any) => any
 
 // Registry keyed by the version being migrated FROM.
 const MIGRATIONS: Record<number, Migration> = {
-  // Example for future use:
-  // 1: (s) => ({ ...s, schemaVersion: 2, newField: defaultValue }),
+  // v1 -> v2: introduce the Milestone 2A social layer. Existing Milestone 1
+  // fields are preserved untouched; new structures are initialized safely and
+  // NPC-to-NPC relationships are seeded from the save's own contestant data.
+  1: (s) => ({
+    ...s,
+    schemaVersion: 2,
+    contestants: Array.isArray(s.contestants)
+      ? s.contestants.map((c: any) => ({
+          ...c,
+          socialAvailable: c.socialAvailable ?? !c.isPlayer,
+        }))
+      : s.contestants,
+    socialGroups: s.socialGroups ?? [],
+    playerInGroup: s.playerInGroup ?? false,
+    interactions: s.interactions ?? [],
+    interactionMemory: s.interactionMemory ?? [],
+    npcRelationships:
+      s.npcRelationships ?? seedNpcRelationships(Array.isArray(s.contestants) ? s.contestants : []),
+    gossip: s.gossip ?? [],
+    promises: s.promises ?? [],
+    knowledge: s.knowledge ?? emptyKnowledge(),
+  }),
 }
 
 function migrate(state: any): GameState | null {
