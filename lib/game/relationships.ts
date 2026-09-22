@@ -1,7 +1,34 @@
-import type { Relationship } from "./types"
+import type { NpcRelationshipStore, Relationship } from "./types"
 
 export function clamp(n: number, min = 0, max = 100): number {
   return Math.max(min, Math.min(max, n))
+}
+
+export function emptyRelationship(): Relationship {
+  return { trust: 40, affection: 35, respect: 45, attraction: 20, tension: 15, familiarity: 25 }
+}
+
+/** Read a directional relationship (from -> to), defaulting sensibly. */
+export function getNpcRel(store: NpcRelationshipStore, from: string, to: string): Relationship {
+  return store[from]?.[to] ?? emptyRelationship()
+}
+
+/**
+ * Return a NEW store with a directional relationship delta applied.
+ * Never mutates the input store — keeps state updates pure.
+ */
+export function withNpcDelta(
+  store: NpcRelationshipStore,
+  from: string,
+  to: string,
+  delta: Partial<Relationship>,
+): NpcRelationshipStore {
+  const current = getNpcRel(store, from, to)
+  const next = applyDelta(current, delta)
+  return {
+    ...store,
+    [from]: { ...(store[from] ?? {}), [to]: next },
+  }
 }
 
 export function applyDelta(

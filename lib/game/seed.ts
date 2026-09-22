@@ -1,6 +1,14 @@
-import type { Contestant, GameState, Relationship, Room } from "./types"
+import type {
+  Contestant,
+  GameState,
+  NpcRelationshipStore,
+  PlayerKnowledge,
+  Relationship,
+  Room,
+} from "./types"
 import { SCHEMA_VERSION } from "./types"
 import { START_CLOCK } from "./clock"
+import { clamp, emptyRelationship } from "./relationships"
 
 export const ROOMS: Room[] = [
   {
@@ -83,7 +91,7 @@ function rel(over: Partial<Relationship>): Relationship {
 }
 
 // 11 NPCs + the player = 12 contestants.
-const NPCS: Omit<Contestant, "nextDecisionClock">[] = [
+const NPCS: Omit<Contestant, "nextDecisionClock" | "socialAvailable">[] = [
   {
     id: "marco",
     name: "Marco",
@@ -374,6 +382,54 @@ const NPCS: Omit<Contestant, "nextDecisionClock">[] = [
 
 export const PLAYER_ID = "player"
 
+export function emptyKnowledge(): PlayerKnowledge {
+  return {
+    witnessedInteractionIds: [],
+    knownFacts: [],
+    suspectedFacts: [],
+    learnedGossip: [],
+  }
+}
+
+/**
+ * Deterministically seed directional contestant-to-contestant relationships
+ * from each NPC's preferred/disliked people. Player is excluded — their
+ * relationships live on `relationshipToPlayer`.
+ */
+export function seedNpcRelationships(contestants: Contestant[]): NpcRelationshipStore {
+  const npcs = contestants.filter((c) => !c.isPlayer)
+  const store: NpcRelationshipStore = {}
+  for (const a of npcs) {
+    store[a.id] = {}
+    for (const b of npcs) {
+      if (a.id === b.id) continue
+      const base = emptyRelationship()
+      let r: Relationship = { ...base, familiarity: 30 }
+      if (a.preferredPeople.includes(b.id)) {
+        r = {
+          ...r,
+          trust: clamp(r.trust + 18),
+          affection: clamp(r.affection + 16),
+          familiarity: clamp(r.familiarity + 15),
+          respect: clamp(r.respect + 8),
+          tension: clamp(r.tension - 6),
+        }
+      }
+      if (a.dislikedPeople.includes(b.id)) {
+        r = {
+          ...r,
+          tension: clamp(r.tension + 26),
+          trust: clamp(r.trust - 16),
+          affection: clamp(r.affection - 10),
+          respect: clamp(r.respect - 4),
+        }
+      }
+      store[a.id][b.id] = r
+    }
+  }
+  return store
+}
+
 export function createInitialState(seed?: number): GameState {
   const rngSeed = seed ?? (Date.now() & 0x7fffffff)
 
@@ -391,6 +447,7 @@ export function createInitialState(seed?: number): GameState {
     mood: "neutral",
     energy: 100,
     socialDrive: 70,
+    socialAvailable: false,
     currentGoal: "Survive and outplay",
     preferredPeople: [],
     dislikedPeople: [],
@@ -408,7 +465,11 @@ export function createInitialState(seed?: number): GameState {
     ...n,
     // Stagger initial decisions so NPCs don't all move on the same tick.
     nextDecisionClock: START_CLOCK + 10 + i * 7,
+    // Awake and open to socializing at the start of the season.
+    socialAvailable: true,
   }))
+
+  const contestants = [player, ...npcs]
 
   return {
     schemaVersion: SCHEMA_VERSION,
@@ -416,7 +477,7 @@ export function createInitialState(seed?: number): GameState {
     speed: "paused",
     playerRoomId: "living_room",
     rooms: ROOMS,
-    contestants: [player, ...npcs],
+    contestants,
     events: [
       {
         id: "welcome",
@@ -428,5 +489,14 @@ export function createInitialState(seed?: number): GameState {
     ],
     rngState: rngSeed,
     createdAt: Date.now(),
+
+    socialGroups: [],
+    playerInGroup: false,
+    interactions: [],
+    interactionMemory: [],
+    npcRelationships: seedNpcRelationships(contestants),
+    gossip: [],
+    promises: [],
+    knowledge: emptyKnowledge(),
   }
 }
